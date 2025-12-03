@@ -1,15 +1,42 @@
-fastapi==0.115.5
-uvicorn[standard]==0.32.1
-pydantic==2.10.2
-python-dotenv==1.0.1
-pandas==2.2.3
-openpyxl==3.1.5
-sqlalchemy==2.0.36
-pymongo==4.10.1
-langchain==0.3.9
-langchain-openai==0.2.10
-langchain-community==0.3.9
-langgraph==0.2.53
-python-pptx==1.0.2
-python-multipart==0.0.17
-pdfplumber==0.11.4
+# ============================================
+# H-OOI: Automated Insight Engine
+# Dependencies (Latest versions - pip handles resolution)
+# ============================================
+
+# Core Framework
+fastapi
+uvicorn[standard]
+pydantic>=2.0
+pydantic-settings
+python-dotenv
+python-multipart
+
+# Data Processing
+pandas
+openpyxl
+numpy
+matplotlib
+
+# Database Connectors
+sqlalchemy
+pymongo
+
+# LangChain Ecosystem (Latest)
+langchain
+langchain-core
+langchain-openai
+langchain-ollama
+
+# LangGraph (Latest with prebuilt components)
+langgraph
+langgraph-prebuilt
+
+# PDF Processing
+pdfplumber
+
+# Report Generation
+python-pptx
+
+# HTTP Client
+httpx
+aiohttp

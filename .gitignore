@@ -32,9 +32,10 @@ Thumbs.db
 *.log
 *.db
 qdrant_storage/
-outputs/
-*.pptx
-*.pdf
+
+# Keep sample outputs for demo
+# outputs/
+# *.pptx
 
 # Temp
 tmp/

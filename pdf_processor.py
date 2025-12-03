@@ -5,7 +5,7 @@ import operator
 from io import BytesIO
 from typing import Annotated, TypedDict, Literal
 from pydantic import BaseModel, Field
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 import pandas as pd
@@ -135,7 +135,7 @@ class PDFProcessState(TypedDict):
 
 def get_local_llm():
     """Get Ollama LLM instance."""
-    return Ollama(model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL)
+    return OllamaLLM(model=OLLAMA_MODEL, base_url=OLLAMA_BASE_URL)
 
 
 def chunk_text(text: str, max_chars: int = 2000) -> list[str]:
@@ -351,6 +351,7 @@ def create_pdf_processing_graph():
 
 async def process_pdf(file_bytes: bytes, filename: str) -> dict:
     """Process a PDF and return analysis report."""
+    from langgraph.errors import GraphRecursionError
     
     # Stage 1: Extract content (no LLM)
     extraction = extract_pdf_content(file_bytes, filename)
@@ -383,7 +384,22 @@ async def process_pdf(file_bytes: bytes, filename: str) -> dict:
         "current_chunk": 0
     }
     
-    result = await graph.ainvoke(initial_state)
-    
-    return result["combined_insights"]
+    try:
+        result = await graph.ainvoke(initial_state, config={"recursion_limit": 100})
+        return result["combined_insights"]
+    except GraphRecursionError:
+        # Return partial insights with what we extracted
+        return {
+            "dataset_id": filename,
+            "source_type": "pdf_partial",
+            "dataset_meta": {
+                "page_count": extraction.page_count,
+                "tables_found": len(extraction.tables),
+                "metrics_extracted": len(extraction.extracted_metrics)
+            },
+            "summary_metrics": [],
+            "observations": [{"title": "Partial Extraction", "detail": "PDF processing was stopped early. Basic metrics extracted.", "importance": "medium"}],
+            "raw_metrics": [m.model_dump() for m in extraction.extracted_metrics[:20]],
+            "analysis_complete": True
+        }
 

@@ -123,8 +123,13 @@ def create_analyst_tools(df: pd.DataFrame, report: dict):
         
         Use print() to see values or assign to 'result' variable.
         Run one operation at a time for clarity.
+        DO NOT use .plot() - it won't work and will cause errors.
         """
         import numpy as np
+        
+        # Block plotting attempts - LLM cannot see visual output
+        if '.plot(' in code or '.plot()' in code:
+            return "Error: Plotting is disabled. Use save_chart_data() to save data for charts instead. You cannot see visual plots."
         
         local_vars = {"df": df.copy(), "pd": pd, "np": np, "result": None}
         builtins = {
@@ -141,6 +146,8 @@ def create_analyst_tools(df: pd.DataFrame, report: dict):
                 return str(result)[:2000]  # Limit output size
         except SyntaxError:
             pass
+        except Exception as e:
+            return f"Error: {str(e)}"
         
         try:
             exec(code, {"__builtins__": builtins}, local_vars)
@@ -335,6 +342,8 @@ You have access to a pandas DataFrame called 'df'. Use execute_code to run Pytho
 4. Be specific with numbers and percentages
 5. Maximum {max_iter} iterations - be efficient
 6. Call complete_analysis() when done
+7. DO NOT use .plot() or any visualization - you cannot see images!
+8. Instead, save chart-ready data as JSON using save_chart_data()
 
 Start by exploring the data structure.""".format(max_iter=MAX_ITERATIONS)
 
@@ -422,6 +431,7 @@ def create_analyst_graph(df: pd.DataFrame, dataset_id: str):
 
 async def run_analyst_agent(df: pd.DataFrame, dataset_id: str) -> dict:
     """Run the analyst agent on a dataframe."""
+    from langgraph.errors import GraphRecursionError
     
     graph, report = create_analyst_graph(df, dataset_id)
     
@@ -451,9 +461,22 @@ Begin your analysis.""")
         "status": "analyzing"
     }
     
-    result = await graph.ainvoke(initial_state)
+    # Set recursion limit - if hit, we'll save partial progress
+    config = {"recursion_limit": MAX_ITERATIONS * 2 + 5}
     
-    return result["report"]
+    try:
+        result = await graph.ainvoke(initial_state, config=config)
+        return result["report"]
+    except GraphRecursionError:
+        # Save partial progress - report dict was updated by tools during execution
+        report["analysis_complete"] = True
+        report["status"] = "partial_complete"
+        report["observations"].append({
+            "title": "Analysis Limit Reached",
+            "detail": "Analysis was stopped at iteration limit. Results shown are partial but usable.",
+            "importance": "medium"
+        })
+        return report
 
 
 # ============================================================================
@@ -839,7 +862,7 @@ async def run_narrator_agent(analysis_report: dict) -> dict:
         "status": "generating"
     }
     
-    result = await graph.ainvoke(initial_state)
+    result = await graph.ainvoke(initial_state, config={"recursion_limit": 50})
     
     return {
         "executive_summary": result["executive_summary"],

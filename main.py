@@ -1,14 +1,17 @@
 """FastAPI with data ingestion endpoints."""
 
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
+
 import pandas as pd
 from io import StringIO, BytesIO
 from uuid import uuid4
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel, HttpUrl
 from sqlalchemy import create_engine
 
-app = FastAPI(title="GroundTruth AI")
+app = FastAPI(title="H-OOI: Automated Insight Engine")
 
 # In-memory storage for loaded dataframes
 datasets: dict[str, pd.DataFrame] = {}
@@ -249,3 +252,76 @@ async def narrate_pdf_report(report_id: str):
         "analysis": analysis_report,
         "narrative": narrative_report
     }
+
+
+# ============ Full Pipeline: Generate PPTX ============
+
+# Store generated reports
+generated_reports: dict[str, dict] = {}
+
+
+@app.post("/generate/{dataset_id}")
+async def generate_report(dataset_id: str):
+    """Full pipeline: Analyze → Narrate → Generate PPTX.
+    
+    Returns a job_id to download the generated presentation.
+    """
+    if dataset_id not in datasets:
+        raise HTTPException(404, "Dataset not found")
+    
+    from agents import run_analyst_agent, run_narrator_agent
+    from report_builder import build_report
+    
+    df = datasets[dataset_id]
+    
+    # Step 1: Analyze
+    analysis = await run_analyst_agent(df, dataset_id)
+    
+    # Step 2: Narrate
+    narrative = await run_narrator_agent(analysis)
+    
+    # Step 3: Build PPTX (guaranteed 6 slides)
+    report_result = await build_report(analysis, narrative)
+    
+    # Store for download
+    job_id = report_result.get("job_id", uuid4().hex[:8])
+    generated_reports[job_id] = {
+        "dataset_id": dataset_id,
+        "output_path": report_result["output_path"],
+        "slides_created": report_result["slides_created"],
+        "template": report_result.get("template", "corporate_blue"),
+        "status": report_result["status"]
+    }
+    
+    return {
+        "job_id": job_id,
+        "status": "complete",
+        "template": report_result.get("template"),
+        "slides_created": report_result["slides_created"],
+        "download_url": f"/download/{job_id}"
+    }
+
+
+@app.get("/download/{job_id}")
+async def download_report(job_id: str):
+    """Download the generated PPTX report."""
+    if job_id not in generated_reports:
+        raise HTTPException(404, "Report not found")
+    
+    report = generated_reports[job_id]
+    filepath = report["output_path"]
+    
+    return FileResponse(
+        path=filepath,
+        filename=f"report_{job_id}.pptx",
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
+
+
+@app.get("/jobs/{job_id}")
+async def get_job_status(job_id: str):
+    """Get the status of a report generation job."""
+    if job_id not in generated_reports:
+        raise HTTPException(404, "Job not found")
+    
+    return generated_reports[job_id]
