@@ -1,5 +1,5 @@
-# 🎯 GroundTruth AI
-### Automated Data-to-Deck Pipeline with Multi-Agent Intelligence
+# 🎯 H-OOI: Automated Insight Engine
+### Multi-Agent Data-to-Deck Pipeline with AI Intelligence
 
 > **From raw data to executive-ready reports in under 60 seconds — no manual work, no dashboards, just actionable insights.**
 
@@ -15,7 +15,7 @@
 
 **The Pain:** By the time a report reaches decision-makers, the data is already old. Problems go unnoticed for days.
 
-> **My Solution:** **GroundTruth AI** — an autonomous multi-agent system that ingests any data source (CSV, SQL, PDF) and generates complete executive reports with AI-driven narratives. Drop a file, get a deck.
+> **My Solution:** **H-OOI** — an autonomous multi-agent system that ingests any data source (CSV, SQL, PDF) and generates complete executive reports with AI-driven narratives. Drop a file, get a deck.
 
 ---
 
@@ -228,7 +228,7 @@ I could have asked the Analyst to also write narratives, but:
 ## 8. Project Structure
 
 ```
-groundtruth/
+h-ooi/
 ├── main.py              # FastAPI application + all endpoints
 ├── agents.py            # Analyst Agent + Narrator Agent (LangGraph)
 ├── pdf_processor.py     # PDF extraction + local LLM pipeline
@@ -249,8 +249,8 @@ groundtruth/
 
 ```bash
 # 1. Clone and setup
-git clone <repo>
-cd groundtruth
+git clone https://github.com/demonzblood007/groundtruth-AI-Hackathon.git
+cd groundtruth-AI-Hackathon
 python -m venv venv
 .\venv\Scripts\activate  # Windows
 pip install -r requirements.txt
